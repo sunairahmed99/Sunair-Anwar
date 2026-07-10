@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
 const DRIVE = {
@@ -19,12 +19,24 @@ const DRIVE = {
   youtube: 'https://drive.google.com/file/d/1woF_dAfQerSz_n12EQJlV0Fn2lInSbj6/preview',
 };
 
-// Hidden iframes that preload ALL Drive videos as soon as the component mounts
+// Sequential background preloader to load Google Drive files one by one
 function PreloadAllVideos() {
+  const [loadedCount, setLoadedCount] = useState(0);
+  const urls = Object.values(DRIVE);
+
+  useEffect(() => {
+    if (loadedCount < urls.length) {
+      const timer = setTimeout(() => {
+        setLoadedCount(prev => prev + 1);
+      }, 700); // Load next video after 700ms in the background
+      return () => clearTimeout(timer);
+    }
+  }, [loadedCount, urls.length]);
+
   return (
     <div style={{ position: 'fixed', opacity: 0, pointerEvents: 'none', width: 0, height: 0, overflow: 'hidden', zIndex: -9999 }}>
-      {Object.values(DRIVE).map((src, i) => (
-        <iframe key={i} src={src} title={`preload-${i}`} loading="eager" allow="autoplay" />
+      {urls.slice(0, loadedCount).map((src, i) => (
+        <iframe key={i} src={src} title={`preload-${i}`} allow="autoplay" />
       ))}
     </div>
   );
@@ -32,6 +44,8 @@ function PreloadAllVideos() {
 
 function DriveVideo({ src }) {
   const [open, setOpen] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+  const containerRef = React.useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -40,17 +54,42 @@ function DriveVideo({ src }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [open]);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldRender(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '300px' } // Load iframes 300px before they enter viewport
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
-      {/* Card preview iframe */}
-      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <iframe
-          src={src}
-          loading="eager"
-          style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-          allow="autoplay"
-          title="Project Demo Video"
-        />
+      {/* Card preview iframe with Lazy Loading */}
+      <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%', background: '#081b29', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {shouldRender ? (
+          <iframe
+            src={src}
+            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+            allow="autoplay"
+            title="Project Demo Video"
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: 'var(--main-color)' }}>
+            <i className="bx bx-loader-alt bx-spin" style={{ fontSize: '3.5rem' }}></i>
+            <span style={{ fontSize: '1.2rem', letterSpacing: '1px' }}>Loading Preview...</span>
+          </div>
+        )}
+        
         {/* Transparent click overlay */}
         <div
           onClick={() => setOpen(true)}
@@ -113,6 +152,7 @@ const btn = {
   width: '12rem', height: '4rem', borderRadius: '0.8rem',
   fontSize: '1.5rem', fontWeight: '600', transition: '0.3s ease', textDecoration: 'none',
 };
+
 
 const projectsData = [
   {

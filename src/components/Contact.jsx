@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import emailjs from '@emailjs/browser';
 
 export default function Contact({ showAnimate }) {
   const [formData, setFormData] = useState({
@@ -9,12 +10,43 @@ export default function Contact({ showAnimate }) {
     message: ''
   });
 
+  const [status, setStatus] = useState('');
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setStatus('Sending...');
+
+    emailjs.send(
+      'service_ck5mnga',
+      'template_qg286lq',
+      {
+        name: formData.fullName,
+        email: formData.email,
+        message: `📱 Mobile: ${formData.mobile}
+📌 Subject: ${formData.subject}
+
+💬 Message:
+${formData.message}`
+      },
+      'bYQd7V4PwivGPmNiF'
+    )
+    .then(() => {
+      setStatus('✅ Message sent successfully!');
+      setFormData({ fullName: '', email: '', mobile: '', subject: '', message: '' });
+    })
+    .catch((err) => {
+      console.error('EmailJS Error:', err);
+      const errorMsg = err?.text || err?.message || JSON.stringify(err);
+      setStatus(`❌ Error: ${errorMsg}`);
+    });
   };
 
   return (
@@ -24,12 +56,12 @@ export default function Contact({ showAnimate }) {
         <span className="animate scroll" style={{ '--i': 1 }}></span>
       </h2>
 
-      <form action="https://formspree.io/f/xvgqeeda" method="POST">
+      <form onSubmit={handleSubmit}>
         <div className="input-box">
           <div className="input-field">
             <input
               type="text"
-              name="Full Name"
+              name="fullName"
               placeholder="Full Name"
               value={formData.fullName}
               onChange={handleChange}
@@ -40,7 +72,7 @@ export default function Contact({ showAnimate }) {
           <div className="input-field">
             <input
               type="email"
-              name="Email"
+              name="email"
               placeholder="Email"
               value={formData.email}
               onChange={handleChange}
@@ -56,7 +88,7 @@ export default function Contact({ showAnimate }) {
           <div className="input-field">
             <input
               type="number"
-              name="Mobile Number"
+              name="mobile"
               placeholder="Mobile Number"
               value={formData.mobile}
               onChange={handleChange}
@@ -67,7 +99,7 @@ export default function Contact({ showAnimate }) {
           <div className="input-field">
             <input
               type="text"
-              name="Email Subject"
+              name="subject"
               placeholder="Email Subject"
               value={formData.subject}
               onChange={handleChange}
@@ -81,7 +113,7 @@ export default function Contact({ showAnimate }) {
 
         <div className="textarea-field">
           <textarea
-            name="Message"
+            name="message"
             cols="30"
             rows="10"
             placeholder="Your Message"
@@ -100,6 +132,12 @@ export default function Contact({ showAnimate }) {
           </button>
           <span className="animate scroll" style={{ '--i': 9 }}></span>
         </div>
+
+        {status && (
+          <p style={{ marginTop: '15px', color: status.includes('✅') ? '#00ff00' : '#ff4444', fontWeight: 'bold' }}>
+            {status}
+          </p>
+        )}
       </form>
     </section>
   );
